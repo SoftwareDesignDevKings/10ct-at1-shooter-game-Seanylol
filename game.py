@@ -5,6 +5,8 @@ import os
 
 
 #adding 2
+#feature changes: physics simulation for player, obstacles/level difficulty increase, wave attacks, bombing
+#i.e explosions/blood splatter, projectile trail
 import app
 
 class Game:
