@@ -3,6 +3,8 @@ import pygame
 import random
 import os
 
+
+#adding 2
 import app
 
 class Game:
