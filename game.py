@@ -8,7 +8,6 @@ import app
 class Game:
     def __init__(self):
         pygame.init()  # Initialize Pygame
-
         # TODO: Create a game window using Pygame
         # self.screen = ?
 
