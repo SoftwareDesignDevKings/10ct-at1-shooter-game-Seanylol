@@ -9,12 +9,11 @@ import os
 WIDTH = 800
 HEIGHT = 600
 FPS = 60
-
+#change fps for better experience?
 PLAYER_SPEED = 3
 DEFAULT_ENEMY_SPEED = 1
 
 SPAWN_MARGIN = 50
-
 ENEMY_SCALE_FACTOR = 2
 PLAYER_SCALE_FACTOR = 2
 FLOOR_TILE_SCALE_FACTOR = 2
@@ -30,6 +29,7 @@ ENEMY_KNOCKBACK_SPEED = 5
 def load_frames(prefix, frame_count, scale_factor=1, folder="assets"):
     frames = []
     for i in range(frame_count):
+        #string formatting: allows convenient access
         image_path = os.path.join(folder, f"{prefix}_{i}.png")
         img = pygame.image.load(image_path).convert_alpha()
 
@@ -44,6 +44,7 @@ def load_frames(prefix, frame_count, scale_factor=1, folder="assets"):
 def load_floor_tiles(folder="assets"):
     floor_tiles = []
     for i in range(8):
+        #8 is simply the number of images uploaded
         path = os.path.join(folder, f"floor_{i}.png")
         tile = pygame.image.load(path).convert()
 
@@ -56,13 +57,16 @@ def load_floor_tiles(folder="assets"):
     return floor_tiles
 
 def load_assets():
+    #2d dictionary
     assets = {}
 
     # Enemies
     assets["enemies"] = {
         "orc":    load_frames("orc",    4, scale_factor=ENEMY_SCALE_FACTOR),
         "undead": load_frames("undead", 4, scale_factor=ENEMY_SCALE_FACTOR),
-        "demon":  load_frames("demon",  4, scale_factor=ENEMY_SCALE_FACTOR),
+        "demon":  load_frames("demon",  4, scale_factor=ENEMY_SCALE_FACTOR*0.8),#tweak stuff here
+        #add new objects: should not be that hard
+
     }
 
     # Player
