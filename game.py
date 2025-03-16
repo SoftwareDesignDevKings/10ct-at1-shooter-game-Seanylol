@@ -5,26 +5,10 @@ import os
 import math
 from player import Player
 from enemy import Enemy
+from coin import Coin
 #feature changes: physics simulation for player, obstacles/level difficulty increase, wave attacks, bombing
 #i.e explosions/blood splatter, projectile trail
 #The surface can also be changed, i.e ice spreading/slow barrier
-
-'''
-class feature:
-    def __init__(self):
-        pass
-    dx=[1,0,-1,0]
-    dy=[0,1,0,-1]
-    def generate(self,type,depth):
-        pos=[]
-        for x in range(len(pos)){
-            for y in range(4):
-                nx = 
-        }
-        #this will randomise environment geeration. some can also add damage: add in player class
-        pass
-'''
-
 #try to find cool fractal pattenrs for explosion effects/make them yourself recursively
 import app
 
@@ -41,22 +25,34 @@ class Game:
         self.background = self.create_random_background(app.WIDTH,app.HEIGHT,self.assets["floor_tiles"])
         self.running = True
         self.game_over=False
-
+        self.coins = []
         self.enemies = []
         self.enemy_spawn_timer = 0
         self.enemy_spawn_interval = 60
         self.enemies_per_spawn = 1
-
+        self.time = 0
         self.reset_game()
+        self.blocks = []
+        self.blockind=0
+        self.xp=0
 
-        
-        
+
     def reset_game(self):
         self.player = Player(app.WIDTH//2,app.HEIGHT//2,self.assets)
         self.enemies = []
         self.enemy_spawn_timer = 0
         self.enemies_per_spawn = 1
         self.game_over = False
+        self.coins = []
+
+    def wall():
+        pass
+        #use a more efficient method to create:
+        #segments of random length and randowm width overlapping a central point: similar to architecture fario
+
+    #can be generalised to any kind of block
+
+    #def 
 
     def create_random_background(self, width, height, floor_tiles):
         bg = pygame.Surface((width, height))
@@ -73,11 +69,16 @@ class Game:
 
     def run(self):
         while self.running:
+            if self.time>15*app.FPS:
+                self.lavaspread(2)
+                self.time=0
+
             keys = pygame.key.get_pressed()
             if keys[pygame.K_x]:
                 pygame.quit()
             # TODO: Set a frame rate limit
             self.clock.tick(app.FPS)
+            self.time+=1
             # TODO: Handle player input and events
             self.handle_events()
             if (not self.game_over):
@@ -139,6 +140,7 @@ class Game:
             enemy.update(self.player)
         self.check_player_enemy_collisions()
         self.check_bullet_enemy_collisions()
+        self.check_player_coin_collisions()
         if self.player.health <= 0:
             print("pass")
             self.game_over = True
@@ -149,6 +151,11 @@ class Game:
         """Render all game elements to the screen."""
 
         self.screen.blit(self.background, (0, 0))
+        for coin in self.coins:
+            coin.draw(self.screen)
+
+        for x, y in self.blocks:
+            self.screen.blit(self.assets["lava"][0], (x, y))
         if not self.game_over:
             self.player.draw(self.screen)
         else:
@@ -214,6 +221,18 @@ class Game:
         for bullet in self.player.bullets:
             for enemy in self.enemies:
                 if bullet.rect.colliderect(enemy.rect):
+                    new_coin = Coin(enemy.x, enemy.y)
+                    self.coins.append(new_coin)  
                     self.player.bullets.remove(bullet)
                     self.enemies.remove(enemy)
 
+    def check_player_coin_collisions(self):
+        coins_collected = []
+        for coin in self.coins:
+            if coin.rect.colliderect(self.player.rect):
+                coins_collected.append(coin)
+                self.player.add_xp(1)
+
+        for c in coins_collected:
+            if c in self.coins:
+                self.coins.remove(c) 

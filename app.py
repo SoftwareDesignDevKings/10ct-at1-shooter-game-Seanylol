@@ -9,7 +9,7 @@ import os
 WIDTH = 800
 HEIGHT = 600
 FPS = 60
-#change fps for better experience?
+
 PLAYER_SPEED = 3
 DEFAULT_ENEMY_SPEED = 1
 
@@ -21,22 +21,29 @@ HEALTH_SCALE_FACTOR = 3
 
 PUSHBACK_DISTANCE = 80
 ENEMY_KNOCKBACK_SPEED = 5
+TW=16
+
+SCREEN_WIDTH = 1280
+SCREEN_HEIGHT = 720
+
 
 # --------------------------------------------------------------------------
 #                       ASSET LOADING FUNCTIONS
 # --------------------------------------------------------------------------
 
-def load_frames(prefix, frame_count, scale_factor=1, folder="assets"):
+def load_frames(prefix, frame_count, scale_factor, folder="assets"):
     frames = []
     for i in range(frame_count):
         #string formatting: allows convenient access
         image_path = os.path.join(folder, f"{prefix}_{i}.png")
         img = pygame.image.load(image_path).convert_alpha()
-
         if scale_factor != 1:
             w = img.get_width() * scale_factor
             h = img.get_height() * scale_factor
-            img = pygame.transform.scale(img, (w, h))
+            if prefix=='lava':  
+                img = pygame.transform.scale(img, (TW, TW))
+            else:
+                img=pygame.transform.scale(img,(w,h))
 
         frames.append(img)
     return frames
@@ -75,9 +82,10 @@ def load_assets():
         "run":  load_frames("player_run",  4, scale_factor=PLAYER_SCALE_FACTOR),
     }
 
-    # Floor tiles
     assets["floor_tiles"] = load_floor_tiles()
-
+    assets["lava"]=load_frames("lava",1,scale_factor=PLAYER_SCALE_FACTOR)
+    # Floor tiles
+    assets["flesh"]=load_frames("flesh",1,scale_factor=ENEMY_SCALE_FACTOR)
     # Health images
     assets["health"] = load_frames("health", 6, scale_factor=HEALTH_SCALE_FACTOR)
 

@@ -17,7 +17,7 @@ class Player:
         self.frame_index = 0
         self.animation_timer = 0
         self.animation_speed = 8
-
+        self.xp=0
         # TODO: 3. Create a collision rectangle (self.rect) 
         self.image = self.animations[self.state][self.frame_index]
         self.rect = self.image.get_rect(center=(self.x, self.y))
@@ -31,6 +31,8 @@ class Player:
         self.shoot_timer = 0
         self.bullets = []#maintains a list of current bullets
 
+    def add_xp(self, amount):
+        self.xp += amount
 
     def handle_input(self):
         """Check and respond to keyboard/mouse input."""
@@ -148,3 +150,4 @@ class Player:
 
     def shoot_toward_enemy(self, enemy):
         self.shoot_toward_position(enemy.x, enemy.y)
+

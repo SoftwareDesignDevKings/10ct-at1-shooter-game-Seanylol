@@ -10,6 +10,7 @@ class Bullet:
         self.image = app.pygame.Surface((self.size, self.size), app.pygame.SRCALPHA)
         self.image.fill((255, 255, 255))
         self.rect = self.image.get_rect(center=(self.x, self.y))
+        
     def update(self):
         self.x += self.vx
         self.y += self.vy
