@@ -92,8 +92,6 @@ while True:
     # Background --------------------------------------------- #
     screen.fill((0, 0, 0))
     mx, my = pygame.mouse.get_pos()
-    
-    # Particle update
     particles_to_remove = []
     for particle in particles:
         # Update position
@@ -129,8 +127,9 @@ while True:
                 screen, 
                 color, 
                 [int(particle['pos'][0]), int(particle['pos'][1])], 
-                int(current_size)
+                int(current_size/3)
             )
+            
             
         
         # Mark for removal if lifetime expired

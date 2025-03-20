@@ -150,4 +150,9 @@ class Player:
 
     def shoot_toward_enemy(self, enemy):
         self.shoot_toward_position(enemy.x, enemy.y)
+    def teleport(self,posx,posy):
+        #add upward floating particle circular transition(blue)
+        self.x=posx
+        self.y=posy
+
 

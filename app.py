@@ -21,7 +21,7 @@ HEALTH_SCALE_FACTOR = 3
 
 PUSHBACK_DISTANCE = 80
 ENEMY_KNOCKBACK_SPEED = 5
-TW=16
+TW=32
 
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
@@ -73,7 +73,6 @@ def load_assets():
         "undead": load_frames("undead", 4, scale_factor=ENEMY_SCALE_FACTOR),
         "demon":  load_frames("demon",  4, scale_factor=ENEMY_SCALE_FACTOR*0.8),#tweak stuff here
         #add new objects: should not be that hard
-
     }
 
     # Player
@@ -86,6 +85,7 @@ def load_assets():
     assets["lava"]=load_frames("lava",1,scale_factor=PLAYER_SCALE_FACTOR)
     # Floor tiles
     assets["flesh"]=load_frames("flesh",1,scale_factor=ENEMY_SCALE_FACTOR)
+    assets["spike"]=load_frames("spike",1,scale_factor=FLOOR_TILE_SCALE_FACTOR)
     # Health images
     assets["health"] = load_frames("health", 6, scale_factor=HEALTH_SCALE_FACTOR)
 

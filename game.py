@@ -1,4 +1,3 @@
-# game.py
 import pygame
 import random
 import os
@@ -12,47 +11,153 @@ from coin import Coin
 #try to find cool fractal pattenrs for explosion effects/make them yourself recursively
 import app
 
+COLORS = [
+    (255, 0, 0),      # Red
+    (255, 127, 0),    # Orange
+    (255, 255, 0),    # Yellow
+    (255, 200, 100),  # Light orange
+]
+
+
 class Game:
     def __init__(self):
         pygame.init()  # Initialize Pygame
-        self.screen = pygame.display.set_mode((app.WIDTH,app.HEIGHT))
+        self.screen = pygame.display.set_mode((app.WIDTH, app.HEIGHT))
         pygame.display.set_caption("Sean's shooter game")
-        self.clock = pygame.time.Clock()#basically creating an inbuilt object
-        self.assets= app.load_assets()
-        font_path = os.path.join("assets","PressStart2P.ttf")
-        self.font_small = pygame.font.Font(font_path,18)
-        self.font_large = pygame.font.Font(font_path,32) #second pa
-        self.background = self.create_random_background(app.WIDTH,app.HEIGHT,self.assets["floor_tiles"])
+        self.clock = pygame.time.Clock()  # basically creating an inbuilt object
+        self.assets = app.load_assets()
+        font_path = os.path.join("assets", "PressStart2P.ttf")
+        self.font_small = pygame.font.Font(font_path, 18)
+        self.font_large = pygame.font.Font(font_path, 32)  # second pa
+        self.background = self.create_random_background(app.WIDTH, app.HEIGHT, self.assets["floor_tiles"])
         self.running = True
-        self.game_over=False
+        self.game_over = False
         self.coins = []
         self.enemies = []
         self.enemy_spawn_timer = 0
         self.enemy_spawn_interval = 60
         self.enemies_per_spawn = 1
-        self.time = 0
-        self.reset_game()
         self.blocks = []
-        self.blockind=0
-        self.xp=0
+        self.spike_rows = []
+        self.blockind = 0
+        self.xp = 0
+        self.particles = []
+        self.particles_surface = pygame.Surface((app.WIDTH, app.HEIGHT), pygame.SRCALPHA)
+        self.last_update_time = pygame.time.get_ticks()
+        self.reset_game()
+        self.spike_cooldown = 10
+        self.spike_timer = 0
+        self.tp=False
+
+    def spawn_explosion(self, origin, size, color_index, vel, splitnum, pos):
+        if size < 2:  # Base case - stop recursion when particles get too small
+            return
+        for x in range(splitnum):
+            angle = math.radians(x * (360 / splitnum))
+            offset_x = (size/2) * math.cos(angle)
+            offset_y = (size/2) * math.sin(angle)
+            center = [pos[0] + offset_x, pos[1] + offset_y]
+            
+            dir_x = center[0] - origin[0]
+            dir_y = center[1] - origin[1]
+            
+            mag = math.sqrt(dir_x**2 + dir_y**2)
+            if mag == 0:
+                dir_x, dir_y = random.uniform(-1, 1), random.uniform(-1, 1)
+            else:
+                dir_x, dir_y = dir_x/mag, dir_y/mag
+            
+            vel_factor = vel * random.uniform(0.8, 1.2)
+            velocity = [dir_x * vel_factor, dir_y * vel_factor]
+        
+            lifetime = random.uniform(size*0.8, size*1.2)
+            self.particles.append({
+                'pos': center,
+                'vel': velocity,
+                'size': size,
+                'color': COLORS[color_index % len(COLORS)],
+                'lifetime': lifetime,
+                'max_lifetime': lifetime,
+                'origin': origin
+            })
+            
+            # Recursive call with smaller size, different color, reduced velocity
+            if random.random() < 0.3:  # Only some particles spawn children (probabilistic)
+                new_color = (color_index + 1) % len(COLORS)
+                self.spawn_explosion(origin, size*0.6, new_color, vel*0.7, max(3, splitnum-1), center)
+
+    def create_explosion(self, pos, size=23, particles_count=8):
+        """Helper function to create an explosion at the given position"""
+        self.spawn_explosion(pos, size, 0, 3.0, particles_count, pos)
+
+    def generate_random_wall_region(self, center_point, max_rows, radius):
+        timer_start = 1.0  
+        tile_size = app.TW  
+        center_grid_x = (center_point[0] // tile_size) * tile_size
+        center_grid_y = (center_point[1] // tile_size) * tile_size
+        max_grid_distance = radius // tile_size
+        num_rows = random.randint(max_rows // 2, max_rows)
+        occupied_positions = set()
+        
+        for _ in range(num_rows):
+            y_offset = random.randint(-max_grid_distance, max_grid_distance)
+            row_y = center_grid_y + (y_offset * tile_size)
+            if row_y < 0 or row_y >= app.HEIGHT:
+                continue
+                
+            x_offset = random.randint(-max_grid_distance, max_grid_distance)
+            start_x = center_grid_x + (x_offset * tile_size)
+            max_length = random.randint(1, 7)  
+            
+            if start_x < 0:
+                start_x = 0
+            if start_x + (max_length * tile_size) > app.WIDTH:
+                max_length = (app.WIDTH - start_x) // tile_size
+                
+            if max_length <= 0:
+                continue
+            
+            row_spikes = []
+            can_place = True
+            
+            for i in range(max_length):
+                pos_x = start_x + (i * tile_size)
+                pos_y = row_y
+                pos_key = (pos_x, pos_y)
+                
+                if pos_key in occupied_positions:
+                    can_place = False
+                    break
+                    
+                current_timer = timer_start + (i * 0.1)
+                
+                # Create a proper spike object with a rect for collision detection
+                spike_rect = pygame.Rect(pos_x, pos_y, tile_size, tile_size)
+                row_spikes.append({
+                    'position': [pos_x, pos_y],
+                    'timer': current_timer,
+                    'rect': spike_rect,
+                    'active': False
+                })
+            
+            if can_place and row_spikes:
+                for spike in row_spikes:
+                    occupied_positions.add((spike['position'][0], spike['position'][1]))
+                self.spike_rows.append(row_spikes)
+                timer_start += 0.2
 
 
     def reset_game(self):
-        self.player = Player(app.WIDTH//2,app.HEIGHT//2,self.assets)
+        self.player = Player(app.WIDTH//2, app.HEIGHT//2, self.assets)
         self.enemies = []
         self.enemy_spawn_timer = 0
         self.enemies_per_spawn = 1
         self.game_over = False
         self.coins = []
+        self.particles = []
+        self.spike_rows = []
+        self.spike_timer = 0
 
-    def wall():
-        pass
-        #use a more efficient method to create:
-        #segments of random length and randowm width overlapping a central point: similar to architecture fario
-
-    #can be generalised to any kind of block
-
-    #def 
 
     def create_random_background(self, width, height, floor_tiles):
         bg = pygame.Surface((width, height))
@@ -62,109 +167,143 @@ class Game:
         for y in range(0, height, tile_h):
             for x in range(0, width, tile_w):
                 tile = random.choice(floor_tiles)
-                #This defines the color scheme: good enough for background but if you want to make more complex landscapes like cactus or connected walls you need to implement something more complex
                 bg.blit(tile, (x, y))
 
         return bg
 
     def run(self):
         while self.running:
-            if self.time>15*app.FPS:
-                self.lavaspread(2)
-                self.time=0
-
             keys = pygame.key.get_pressed()
             if keys[pygame.K_x]:
                 pygame.quit()
-            # TODO: Set a frame rate limit
+                return
+
             self.clock.tick(app.FPS)
-            self.time+=1
-            # TODO: Handle player input and events
+            
+            # Use proper time-based updates for spike generation
+            dt = self.clock.get_time() / 1000.0
+            self.spike_timer += dt
+            
+            if self.spike_timer > self.spike_cooldown:
+                self.spike_timer = 0
+                x = random.randint(0, app.WIDTH)
+                y = random.randint(0, app.HEIGHT)
+                self.generate_random_wall_region([x, y], 15, radius=40)
+                
             self.handle_events()
-            if (not self.game_over):
+            
+            if not self.game_over:
                 self.update()
-            else:
-                #display gameover message
-                '''
-                if keys[pygame.K_r]:
-                    self.reset_game
-                    self.running=True
-                if keys[pygame.K_x]:
-                    pygame.quit()
-                '''
+                
             self.draw()
 
     def draw_game_over_screen(self):
-            # Dark overlay
-            overlay = pygame.Surface((app.WIDTH, app.HEIGHT), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, 180))
-            self.screen.blit(overlay, (0, 0))
+        # Dark overlay
+        overlay = pygame.Surface((app.WIDTH, app.HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 180))
+        self.screen.blit(overlay, (0, 0))
 
-            # Game Over text
-            game_over_surf = self.font_large.render("GAME OVER!", True, (255, 0, 0))
-            game_over_rect = game_over_surf.get_rect(center=(app.WIDTH // 2, app.HEIGHT // 2 - 50))
-            self.screen.blit(game_over_surf, game_over_rect)
+        # Game Over text
+        game_over_surf = self.font_large.render("GAME OVER!", True, (255, 0, 0))
+        game_over_rect = game_over_surf.get_rect(center=(app.WIDTH // 2, app.HEIGHT // 2 - 50))
+        self.screen.blit(game_over_surf, game_over_rect)
 
-            # Prompt to restart or quit
-            prompt_surf = self.font_small.render("Press R to Play Again or ESC to Quit", True, (255, 255, 255))
-            prompt_rect = prompt_surf.get_rect(center=(app.WIDTH // 2, app.HEIGHT // 2 + 20))
-            self.screen.blit(prompt_surf, prompt_rect)
+        # Prompt to restart or quit
+        prompt_surf = self.font_small.render("Press R to Play Again or ESC to Quit", True, (255, 255, 255))
+        prompt_rect = prompt_surf.get_rect(center=(app.WIDTH // 2, app.HEIGHT // 2 + 20))
+        self.screen.blit(prompt_surf, prompt_rect)
             
     def handle_events(self):
         """Process user input (keyboard, mouse, quitting)."""
+        mx=0
+        my=0
         for event in pygame.event.get():
-            # TODO: Allow the player to quit the game
-            if event.type == pygame.quit:
+            if self.game_over:
+                if event.key == pygame.K_r:
+                    self.reset_game()
+                elif event.key == pygame.K_ESCAPE:
+                    self.running = False
+            if event.type == pygame.QUIT:
                 self.running = False
             elif event.type == pygame.KEYDOWN:
-                if self.game_over:
-                    if event.key == pygame.K_r:
-                        self.reset_game()
-                    elif event.key == pygame.K_ESCAPE:
-                        self.running = False
+                mx,my=pygame.mouse.get_pos()
+                if self.tp:
+                    self.player.teleport(mx,my)
+                    self.tp=False
                 else:
                     if event.key == pygame.K_SPACE:
                         nearest_enemy = self.find_nearest_enemy()
                         if nearest_enemy:
                             self.player.shoot_toward_enemy(nearest_enemy)
-                    if event.key==pygame.K_c:
+                    if event.key ==pygame.K_t:
+                        print("yes")
+                        self.tp=True
+                    if event.key == pygame.K_c:
                         self.player.circleshot()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left mouse button
                     self.player.shoot_toward_mouse(event.pos)
 
+
     def update(self):
+        current_time = pygame.time.get_ticks()
+        dt = (current_time - self.last_update_time) / 1000.0
+        self.last_update_time = current_time
+        
         self.player.handle_input()
         self.player.update()
+        self.update_particles(dt)
+        self.update_spikes(dt)
+        
         for enemy in self.enemies:
             enemy.update(self.player)
+            
         self.check_player_enemy_collisions()
         self.check_bullet_enemy_collisions()
         self.check_player_coin_collisions()
+        self.check_player_spike_collisions()
+        self.check_enemy_spike_collisions()
+        
         if self.player.health <= 0:
-            print("pass")
             self.game_over = True
             return 
+            
         self.spawn_enemies()
         
     def draw(self):
         """Render all game elements to the screen."""
-
+        # Draw background
         self.screen.blit(self.background, (0, 0))
+        
+        # Draw game elements
         for coin in self.coins:
             coin.draw(self.screen)
 
         for x, y in self.blocks:
             self.screen.blit(self.assets["lava"][0], (x, y))
+        
+        # Draw spikes
+        self.draw_spikes()
+        
+        # Draw particles
+        self.draw_particles()
+        
+        # Draw player if not game over
         if not self.game_over:
             self.player.draw(self.screen)
         else:
             self.draw_game_over_screen()
+            
+        # Draw enemies
         for enemy in self.enemies:
             enemy.draw(self.screen)
+            
+        # Draw UI elements
         hp = max(0, min(self.player.health, 5))
         health_img = self.assets["health"][hp]
         self.screen.blit(health_img, (10, 10))
+        
+        # Update display
         pygame.display.flip()
 
     def spawn_enemies(self):
@@ -192,17 +331,47 @@ class Game:
                 self.enemies.append(enemy)
 
     def check_player_enemy_collisions(self):
-        collided = False
         for enemy in self.enemies:
             if enemy.rect.colliderect(self.player.rect):
-                collided = True
+                self.player.take_damage(1)
+                px, py = self.player.x, self.player.y
+                for e in self.enemies:
+                    e.set_knockback(px, py, app.PUSHBACK_DISTANCE)
                 break
 
-        if collided:
-            self.player.take_damage(1)
-            px, py = self.player.x, self.player.y
-            for enemy in self.enemies:
-                enemy.set_knockback(px, py, app.PUSHBACK_DISTANCE)
+    def check_player_spike_collisions(self):
+        for row in self.spike_rows:
+            for spike in row:
+                if spike['active'] and spike['rect'].colliderect(self.player.rect):
+                    self.player.take_damage(1)
+                    self.create_explosion(
+                        (self.player.x, self.player.y),
+                        random.uniform(15, 25),
+                        random.randint(6, 12)
+                    )
+                    return
+
+    def check_enemy_spike_collisions(self):
+        enemies_to_remove = []
+        
+        for row in self.spike_rows:
+            for spike in row:
+                if spike['active']:
+                    for enemy in self.enemies:
+                        if spike['rect'].colliderect(enemy.rect):
+                            self.create_explosion(
+                                (enemy.x, enemy.y),
+                                random.uniform(15, 25),
+                                random.randint(6, 12)
+                            )
+                            # Add coin when enemy is killed by spike
+                            new_coin = Coin(enemy.x, enemy.y)
+                            self.coins.append(new_coin)
+                            enemies_to_remove.append(enemy)
+        
+        for enemy in enemies_to_remove:
+            if enemy in self.enemies:
+                self.enemies.remove(enemy)
 
     def find_nearest_enemy(self):
         if not self.enemies:
@@ -218,13 +387,26 @@ class Game:
         return nearest
     
     def check_bullet_enemy_collisions(self):
+        bullets_to_remove = []
+        enemies_to_remove = []
+        
         for bullet in self.player.bullets:
             for enemy in self.enemies:
-                if bullet.rect.colliderect(enemy.rect):
+                if bullet.rect.colliderect(enemy.rect) and bullet not in bullets_to_remove:
+                    self.create_explosion((enemy.x, enemy.y), random.uniform(15, 25), random.randint(6, 12))
                     new_coin = Coin(enemy.x, enemy.y)
-                    self.coins.append(new_coin)  
-                    self.player.bullets.remove(bullet)
-                    self.enemies.remove(enemy)
+                    self.coins.append(new_coin)
+                    bullets_to_remove.append(bullet)
+                    enemies_to_remove.append(enemy)
+                    break
+        
+        for bullet in bullets_to_remove:
+            if bullet in self.player.bullets:
+                self.player.bullets.remove(bullet)
+                
+        for enemy in enemies_to_remove:
+            if enemy in self.enemies:
+                self.enemies.remove(enemy)
 
     def check_player_coin_collisions(self):
         coins_collected = []
@@ -235,4 +417,122 @@ class Game:
 
         for c in coins_collected:
             if c in self.coins:
-                self.coins.remove(c) 
+                self.coins.remove(c)
+
+    def update_particles(self, dt):
+        particles_to_remove = []
+        
+        for particle in self.particles:
+            # Update position
+            particle['pos'][0] += particle['vel'][0]
+            particle['pos'][1] += particle['vel'][1]
+            
+            # Apply gravity and friction
+            particle['vel'][1] += 0.2
+            particle['vel'][0] *= 0.98
+            particle['vel'][1] *= 0.98
+            
+            # Update lifetime
+            particle['lifetime'] -= dt * 30
+            
+            # Mark for removal if lifetime is up
+            if particle['lifetime'] <= 0:
+                particles_to_remove.append(particle)
+        
+        # Remove dead particles
+        for particle in particles_to_remove:
+            if particle in self.particles:
+                self.particles.remove(particle)
+    
+    def update_spikes(self, dt):
+        rows_to_remove = []
+        
+        for row_index, row in enumerate(self.spike_rows):
+            spikes_to_remove = []
+            
+            for spike_index, spike in enumerate(row):
+                # Update timer
+                spike['timer'] -= dt
+                
+                # Check if spike has become active
+                if spike['timer'] <= 0 and spike['timer'] > -2:
+                    spike['active'] = True
+                
+                # Mark for removal if lifetime is up
+                if spike['timer'] <= -2:
+                    spikes_to_remove.append(spike_index)
+            
+            # Remove dead spikes
+            for index in sorted(spikes_to_remove, reverse=True):
+                row.pop(index)
+            
+            # Mark empty rows for removal
+            if not row:
+                rows_to_remove.append(row_index)
+        
+        # Remove empty rows
+        for index in sorted(rows_to_remove, reverse=True):
+            self.spike_rows.pop(index)
+
+    def draw_spikes(self):
+        spike_img = self.assets["spike"][0]
+        spike_img = pygame.transform.scale(spike_img,(app.TW,app.TW))
+        
+        for row in self.spike_rows:
+            for spike in row:
+                position = spike['position']
+                
+                if spike['timer'] > 0:
+                    # Draw warning indicator
+                    warning_rect = pygame.Rect(position[0], position[1], app.TW, app.TW)
+                    alpha = int(255 * (1 - spike['timer']))  # Fade in effect
+                    warning_color = (255, 0, 0, min(255, max(0, alpha)))
+                    
+                    # Create a surface for the warning rectangle
+                    warning_surface = pygame.Surface((app.TW, app.TW), pygame.SRCALPHA)
+                    pygame.draw.rect(warning_surface, warning_color, warning_surface.get_rect(), 2)
+                    self.screen.blit(warning_surface, position)
+                    
+                elif spike['active']:
+                    # Draw active spike
+                    self.screen.blit(spike_img, position)
+    
+    def draw_particles(self):
+        # Clear particles surface
+        self.particles_surface.fill((0, 0, 0, 0))
+        flesh = self.assets["flesh"][0]
+
+        for particle in self.particles:
+            # Calculate fade ratio
+            fade_ratio = particle['lifetime'] / particle['max_lifetime']
+            current_size = max(0, int(particle['size'] * fade_ratio))
+            
+            if fade_ratio > 0 and current_size > 0:
+                # Draw particle
+                r, g, b = particle['color']
+                color = (r, g, b, int(255 * fade_ratio))
+                
+                # Draw flesh particle
+                if flesh and current_size > 2:
+                    dx = particle['origin'][0] - particle['pos'][0]
+                    dy = (particle['origin'][1] - particle['pos'][1]) * -1
+                    angle = math.degrees(math.atan2(dy, dx))
+                    
+                    # Scale and rotate flesh image
+                    scaled_flesh = pygame.transform.scale(flesh, (current_size, current_size))
+                    rotated_flesh = pygame.transform.rotate(scaled_flesh, angle - 45)
+                    
+                    # Draw at correct position
+                    rect = rotated_flesh.get_rect(center=(particle['pos'][0], particle['pos'][1]))
+                    self.particles_surface.blit(rotated_flesh, rect.topleft)
+                
+                # Draw glow effect
+                pygame.draw.circle(
+                    self.particles_surface, 
+                    color, 
+                    (int(particle['pos'][0]), int(particle['pos'][1])), 
+                    int(current_size/3)
+                )
+        
+        # Blit particles surface to screen
+        self.screen.blit(self.particles_surface, (0, 0))
