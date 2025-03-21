@@ -48,6 +48,7 @@ class Game:
         self.spike_cooldown = 10
         self.spike_timer = 0
         self.tp=False
+        self.bm=False
 
     def spawn_explosion(self, origin, size, color_index, vel, splitnum, pos):
         if size < 2:  # Base case - stop recursion when particles get too small
@@ -226,23 +227,30 @@ class Game:
             if event.type == pygame.QUIT:
                 self.running = False
             elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    nearest_enemy = self.find_nearest_enemy()
+                    if nearest_enemy:
+                        self.player.shoot_toward_enemy(nearest_enemy)
+                if event.key ==pygame.K_t:
+                    print("yes")
+                    self.tp=True 
+                if event.key==pygame.K_b:
+                    self.bm=True
+                if event.key == pygame.K_c:
+                    self.player.circleshot()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
                 mx,my=pygame.mouse.get_pos()
                 if self.tp:
                     self.player.teleport(mx,my)
                     self.tp=False
-                else:
-                    if event.key == pygame.K_SPACE:
-                        nearest_enemy = self.find_nearest_enemy()
-                        if nearest_enemy:
-                            self.player.shoot_toward_enemy(nearest_enemy)
-                    if event.key ==pygame.K_t:
-                        print("yes")
-                        self.tp=True
-                    if event.key == pygame.K_c:
-                        self.player.circleshot()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if self.bm:
+                    self.player.shootbeam(mx,my)
+                    self.bm=False
+                    print("ya")
                 if event.button == 1:  # Left mouse button
                     self.player.shoot_toward_mouse(event.pos)
+                    #shoot beam here
+
 
 
     def update(self):
@@ -501,6 +509,18 @@ class Game:
         # Clear particles surface
         self.particles_surface.fill((0, 0, 0, 0))
         flesh = self.assets["flesh"][0]
+        self.lst = self.player.beam_display
+        if self.lst[4] and self.lst[3] > 0:
+            angle = self.lst[0]
+            beam = pygame.transform.scale(self.assets["beam"][0],(900,self.lst[3]))
+            rbeam = pygame.transform.rotate(beam, -angle)
+
+            rec = rbeam.get_rect()
+            rec.center = (self.lst[1],self.lst[2])
+
+            self.lst[3] -= 1
+            self.screen.blit(rbeam, rec)
+        
 
         for particle in self.particles:
             # Calculate fade ratio

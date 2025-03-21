@@ -9,6 +9,7 @@ import os
 WIDTH = 800
 HEIGHT = 600
 FPS = 60
+BEAMLEN = 900
 
 PLAYER_SPEED = 3
 DEFAULT_ENEMY_SPEED = 1
@@ -34,16 +35,12 @@ SCREEN_HEIGHT = 720
 def load_frames(prefix, frame_count, scale_factor, folder="assets"):
     frames = []
     for i in range(frame_count):
-        #string formatting: allows convenient access
         image_path = os.path.join(folder, f"{prefix}_{i}.png")
         img = pygame.image.load(image_path).convert_alpha()
         if scale_factor != 1:
             w = img.get_width() * scale_factor
             h = img.get_height() * scale_factor
-            if prefix=='lava':  
-                img = pygame.transform.scale(img, (TW, TW))
-            else:
-                img=pygame.transform.scale(img,(w,h))
+            img=pygame.transform.scale(img,(w,h))
 
         frames.append(img)
     return frames
@@ -85,10 +82,13 @@ def load_assets():
     assets["lava"]=load_frames("lava",1,scale_factor=PLAYER_SCALE_FACTOR)
     # Floor tiles
     assets["flesh"]=load_frames("flesh",1,scale_factor=ENEMY_SCALE_FACTOR)
+    #load more flesh frames
+
     assets["spike"]=load_frames("spike",1,scale_factor=FLOOR_TILE_SCALE_FACTOR)
+    assets["beam"]=load_frames("beam",1,scale_factor=0.5)
     # Health images
     assets["health"] = load_frames("health", 6, scale_factor=HEALTH_SCALE_FACTOR)
-
+    
     # Example coin image (uncomment if you have coin frames / images)
     # assets["coin"] = pygame.image.load(os.path.join("assets", "coin.png")).convert_alpha()
 

@@ -11,17 +11,23 @@ class Player:
         self.x = x
         self.y = y
         # TODO: 2. Load the player's image from assets
+
         self.speed = app.PLAYER_SPEED
         self.animations = assets["player"]
+        self.beam = assets["beam"][0]
+        self.beam_display = [0,0,0,0,False]
+
         self.state = "idle"
         self.frame_index = 0
         self.animation_timer = 0
         self.animation_speed = 8
         self.xp=0
+
         # TODO: 3. Create a collision rectangle (self.rect) 
         self.image = self.animations[self.state][self.frame_index]
         self.rect = self.image.get_rect(center=(self.x, self.y))
         self.facing_left=False
+
         # TODO: 4. Add player health 
         self.health = 5
         self.bullet_speed = 10
@@ -155,4 +161,18 @@ class Player:
         self.x=posx
         self.y=posy
 
-
+    def shootbeam(self, posx, posy):
+        # Calculate angle between player and target position
+        angle_rad = math.atan2(posy - self.y, posx - self.x)
+        angle_deg = math.degrees(angle_rad)
+        initial_beam_width = 25  # Starting width of the beam
+        beam_start_x = self.x + (math.cos(angle_rad) * 470)
+        beam_start_y = self.y + (math.sin(angle_rad) * 470)
+        # Store beam information
+        self.beam_display = [
+            angle_deg,           
+            beam_start_x,        
+            beam_start_y,       
+            30,                  
+            True,                
+        ]
