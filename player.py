@@ -10,6 +10,9 @@ class Player:
         # TODO: 1. Store the player's position
         self.x = x
         self.y = y
+        #keep track of velocity for rebound
+        self.vx=0
+        self.vy=0
         # TODO: 2. Load the player's image from assets
 
         self.speed = app.PLAYER_SPEED

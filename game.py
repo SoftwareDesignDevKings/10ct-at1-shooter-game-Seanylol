@@ -42,6 +42,7 @@ class Game:
         self.blockind = 0
         self.xp = 0
         self.particles = []
+        self.float_particles=[]
         self.particles_surface = pygame.Surface((app.WIDTH, app.HEIGHT), pygame.SRCALPHA)
         self.last_update_time = pygame.time.get_ticks()
         self.reset_game()
@@ -49,19 +50,46 @@ class Game:
         self.spike_timer = 0
         self.tp=False
         self.bm=False
+        #change bm to a numerical value indicating bm count
 
-    def spawn_explosion(self, origin, size, color_index, vel, splitnum, pos):
+        self.ba=False
+        self.beamangle = 0
+
+
+    def spawn_flame(self, pos, color,dir):
+        # Create more varied movement by using both x and y components
+        #original ranges, -0.8 to 0.8, -3 to -0.3
+        vel_x = dir[0]+random.uniform(-0.5, 0.5)
+        vel_y = dir[1]+random.uniform(-0.8, 0.5)  
+        size = random.uniform(2, 5)
+        r,g,b= color
+        red = random.randint(0, 255)  # Varying blue intensity
+        self.particles.append({
+                'pos': pos,
+                'vel': [vel_x,vel_y],
+                'size': size,
+                'color':(red, g, b),  
+                'lifetime': random.uniform(30.0,40.2),
+                'max_lifetime': random.uniform(30.0,40.2),
+                'origin': [-1,-1],
+                'type': 0
+        }
+        )
+
+
+    def spawn_explosion(self, origin, size, color_index, vel, splitnum, pos,fleshtype):
         if size < 2:  # Base case - stop recursion when particles get too small
             return
         for x in range(splitnum):
             angle = math.radians(x * (360 / splitnum))
+
             offset_x = (size/2) * math.cos(angle)
             offset_y = (size/2) * math.sin(angle)
             center = [pos[0] + offset_x, pos[1] + offset_y]
-            
+
             dir_x = center[0] - origin[0]
             dir_y = center[1] - origin[1]
-            
+
             mag = math.sqrt(dir_x**2 + dir_y**2)
             if mag == 0:
                 dir_x, dir_y = random.uniform(-1, 1), random.uniform(-1, 1)
@@ -79,17 +107,17 @@ class Game:
                 'color': COLORS[color_index % len(COLORS)],
                 'lifetime': lifetime,
                 'max_lifetime': lifetime,
-                'origin': origin
+                'origin': origin,
+                'type': fleshtype
             })
             
-            # Recursive call with smaller size, different color, reduced velocity
-            if random.random() < 0.3:  # Only some particles spawn children (probabilistic)
+            if random.random() < 0.3:
                 new_color = (color_index + 1) % len(COLORS)
-                self.spawn_explosion(origin, size*0.6, new_color, vel*0.7, max(3, splitnum-1), center)
+                self.spawn_explosion(origin, size*0.6, new_color, vel*0.7, max(3, splitnum-1), center,fleshtype)
 
-    def create_explosion(self, pos, size=23, particles_count=8):
+    def create_explosion(self, pos, size=23, particles_count=8,fleshtype=0):
         """Helper function to create an explosion at the given position"""
-        self.spawn_explosion(pos, size, 0, 3.0, particles_count, pos)
+        self.spawn_explosion(pos, size, 0, 3.0, particles_count, pos,fleshtype)
 
     def generate_random_wall_region(self, center_point, max_rows, radius):
         timer_start = 1.0  
@@ -192,11 +220,11 @@ class Game:
                 self.generate_random_wall_region([x, y], 15, radius=40)
                 
             self.handle_events()
+            self.draw()
             
             if not self.game_over:
                 self.update()
                 
-            self.draw()
 
     def draw_game_over_screen(self):
         # Dark overlay
@@ -216,14 +244,19 @@ class Game:
             
     def handle_events(self):
         """Process user input (keyboard, mouse, quitting)."""
-        mx=0
-        my=0
+        # Get current mouse position for hover effect if teleport is active
+        if self.tp:
+            mx, my = pygame.mouse.get_pos()
+            blue_color = [0, 50 + random.randint(0, 50), 200 + random.randint(0, 55)]
+            self.spawn_flame([mx, my], blue_color,[0,-2.5])
+        
         for event in pygame.event.get():
             if self.game_over:
-                if event.key == pygame.K_r:
-                    self.reset_game()
-                elif event.key == pygame.K_ESCAPE:
-                    self.running = False
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_r:
+                        self.reset_game()
+                    elif event.key == pygame.K_ESCAPE:
+                        self.running = False
             if event.type == pygame.QUIT:
                 self.running = False
             elif event.type == pygame.KEYDOWN:
@@ -231,25 +264,29 @@ class Game:
                     nearest_enemy = self.find_nearest_enemy()
                     if nearest_enemy:
                         self.player.shoot_toward_enemy(nearest_enemy)
-                if event.key ==pygame.K_t:
-                    print("yes")
-                    self.tp=True 
-                if event.key==pygame.K_b:
-                    self.bm=True
+                if event.key == pygame.K_t:
+                    print("Teleport mode activated")
+                    self.tp = True 
+                if event.key == pygame.K_b:
+                    self.bm = True
                 if event.key == pygame.K_c:
                     self.player.circleshot()
+            elif event.type == pygame.KEYUP:
+                # Turn off teleport mode when T key is released
+                if event.key == pygame.K_t:
+                    self.tp = False
+                    print("Teleport mode deactivated")
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                mx,my=pygame.mouse.get_pos()
-                if self.tp:
-                    self.player.teleport(mx,my)
-                    self.tp=False
-                if self.bm:
-                    self.player.shootbeam(mx,my)
-                    self.bm=False
-                    print("ya")
-                if event.button == 1:  # Left mouse button
+                mx, my = pygame.mouse.get_pos()
+                if self.tp:    
+                    self.player.teleport(mx, my)
+                    self.tp = False
+                elif self.bm:
+                    self.player.shootbeam(mx, my)
+                    self.bm = False
+                    print("Beam fired")
+                elif event.button == 1:  
                     self.player.shoot_toward_mouse(event.pos)
-                    #shoot beam here
 
 
 
@@ -351,13 +388,9 @@ class Game:
         for row in self.spike_rows:
             for spike in row:
                 if spike['active'] and spike['rect'].colliderect(self.player.rect):
-                    self.player.take_damage(1)
-                    self.create_explosion(
-                        (self.player.x, self.player.y),
-                        random.uniform(15, 25),
-                        random.randint(6, 12)
-                    )
-                    return
+                        self.player.take_damage(5)
+    
+                    
 
     def check_enemy_spike_collisions(self):
         enemies_to_remove = []
@@ -370,7 +403,9 @@ class Game:
                             self.create_explosion(
                                 (enemy.x, enemy.y),
                                 random.uniform(15, 25),
-                                random.randint(6, 12)
+                                random.randint(6, 12),
+                                #change this later
+                                0
                             )
                             # Add coin when enemy is killed by spike
                             new_coin = Coin(enemy.x, enemy.y)
@@ -394,19 +429,90 @@ class Game:
                 nearest = enemy
         return nearest
     
+        
+    def check_bullet_enemy_collisions(self):
+        bullets_to_remove = []
+        enemies_to_remove = []
+        
+        # Process regular bullet collisions
+        for bullet in self.player.bullets:
+            self.spawn_flame([bullet.x, bullet.y], (240, 220, 15), [bullet.vx, bullet.vy])
+            for enemy in self.enemies:
+                if bullet.rect.colliderect(enemy.rect) and bullet not in bullets_to_remove:
+                    self.create_explosion((enemy.x, enemy.y), random.uniform(15, 25), random.randint(6, 12), 0)
+                    new_coin = Coin(enemy.x, enemy.y)
+                    self.coins.append(new_coin)
+                    bullets_to_remove.append(bullet)
+                    enemies_to_remove.append(enemy)
+        
+        # Process beam collisions separately
+        if self.ba:
+            beam_angle_rad = math.radians(self.beamangle)
+            beam_dir_x = math.cos(beam_angle_rad)
+            beam_dir_y = math.sin(beam_angle_rad)
+            beam_width = 25  # Match the width from Player.shootbeam
+            beam_length = 900  # Match the length from draw_particles
+            for enemy in self.enemies:
+                # Vector from player to enemy
+                to_enemy_x = enemy.x - self.player.x
+                to_enemy_y = enemy.y - self.player.y
+                
+                # Distance from player to enemy
+                dist_to_enemy = math.sqrt(to_enemy_x**2 + to_enemy_y**2)
+                    
+                dot_product = to_enemy_x * beam_dir_x + to_enemy_y * beam_dir_y
+                
+                # Skip if enemy is behind the beam (negative projection)
+                if dot_product < 0:
+                    continue
+                    
+                # Calculate closest point on beam line to enemy
+                closest_x = self.player.x + beam_dir_x * dot_product
+                closest_y = self.player.y + beam_dir_y * dot_product
+                
+                # Distance from closest point to enemy (perpendicular distance)
+                perp_dist = math.sqrt((closest_x - enemy.x)**2 + (closest_y - enemy.y)**2)
+                
+                # Adjust beam width based on distance (optional, for perspective effect)
+                effective_width = beam_width / 2
+                
+                # Check if enemy is within the beam width
+                if perp_dist <= effective_width + enemy.rect.width / 2:
+                    if enemy not in enemies_to_remove:
+                        self.create_explosion((enemy.x, enemy.y), random.uniform(15, 25), random.randint(6, 12), 0)
+                        new_coin = Coin(enemy.x, enemy.y)
+                        self.coins.append(new_coin)
+                        enemies_to_remove.append(enemy)
+        
+        # Remove bullets and enemies that have been marked
+        for bullet in bullets_to_remove:
+            if bullet in self.player.bullets:
+                self.player.bullets.remove(bullet)
+                
+        for enemy in enemies_to_remove:
+            if enemy in self.enemies:
+                self.enemies.remove(enemy)
+    '''
     def check_bullet_enemy_collisions(self):
         bullets_to_remove = []
         enemies_to_remove = []
         
         for bullet in self.player.bullets:
+            self.spawn_flame([bullet.x,bullet.y],(240,220,15),[bullet.vx,bullet.vy])
             for enemy in self.enemies:
-                if bullet.rect.colliderect(enemy.rect) and bullet not in bullets_to_remove:
-                    self.create_explosion((enemy.x, enemy.y), random.uniform(15, 25), random.randint(6, 12))
+                angle = math.degrees(math.atan2(self.player.y - enemy.y, self.player.x - enemy.x))
+
+                if (bullet.rect.colliderect(enemy.rect) and bullet not in bullets_to_remove) or  (self.ba and angle>self.beamangle-5 and angle<self.beamangle+5):
+                    #somehow this part is not good. Take a break for now and add randomised powerups later on
+                    #last step is to add xp/level display with incrementations on enemy attributes.  Do it by tommorow.
+
+
+                    self.create_explosion((enemy.x, enemy.y), random.uniform(15, 25), random.randint(6, 12),0)
                     new_coin = Coin(enemy.x, enemy.y)
                     self.coins.append(new_coin)
                     bullets_to_remove.append(bullet)
                     enemies_to_remove.append(enemy)
-                    break
+        
         
         for bullet in bullets_to_remove:
             if bullet in self.player.bullets:
@@ -415,7 +521,7 @@ class Game:
         for enemy in enemies_to_remove:
             if enemy in self.enemies:
                 self.enemies.remove(enemy)
-
+    '''
     def check_player_coin_collisions(self):
         coins_collected = []
         for coin in self.coins:
@@ -431,16 +537,18 @@ class Game:
         particles_to_remove = []
         
         for particle in self.particles:
-            # Update position
+
             particle['pos'][0] += particle['vel'][0]
             particle['pos'][1] += particle['vel'][1]
-            
-            # Apply gravity and friction
-            particle['vel'][1] += 0.2
+
             particle['vel'][0] *= 0.98
             particle['vel'][1] *= 0.98
             
-            # Update lifetime
+            if particle['origin'][0]!=-1:
+                #if type is explosive
+                particle['vel'][1] += 0.2
+
+                
             particle['lifetime'] -= dt * 30
             
             # Mark for removal if lifetime is up
@@ -508,51 +616,61 @@ class Game:
     def draw_particles(self):
         # Clear particles surface
         self.particles_surface.fill((0, 0, 0, 0))
-        flesh = self.assets["flesh"][0]
+        
+        # Handle beam display
         self.lst = self.player.beam_display
         if self.lst[4] and self.lst[3] > 0:
             angle = self.lst[0]
-            beam = pygame.transform.scale(self.assets["beam"][0],(900,self.lst[3]))
+            beam = pygame.transform.scale(self.assets["beam"][0], (900, self.lst[3]))
             rbeam = pygame.transform.rotate(beam, -angle)
-
             rec = rbeam.get_rect()
-            rec.center = (self.lst[1],self.lst[2])
-
+            rec.center = (self.lst[1], self.lst[2])
             self.lst[3] -= 1
             self.screen.blit(rbeam, rec)
-        
-
-        for particle in self.particles:
-            # Calculate fade ratio
-            fade_ratio = particle['lifetime'] / particle['max_lifetime']
-            current_size = max(0, int(particle['size'] * fade_ratio))
+            self.beamangle = angle
+            self.ba=True
+        else:
+            self.ba=False
             
-            if fade_ratio > 0 and current_size > 0:
-                # Draw particle
-                r, g, b = particle['color']
-                color = (r, g, b, int(255 * fade_ratio))
-                
-                # Draw flesh particle
-                if flesh and current_size > 2:
-                    dx = particle['origin'][0] - particle['pos'][0]
-                    dy = (particle['origin'][1] - particle['pos'][1]) * -1
-                    angle = math.degrees(math.atan2(dy, dx))
-                    
-                    # Scale and rotate flesh image
-                    scaled_flesh = pygame.transform.scale(flesh, (current_size, current_size))
-                    rotated_flesh = pygame.transform.rotate(scaled_flesh, angle - 45)
-                    
-                    # Draw at correct position
-                    rect = rotated_flesh.get_rect(center=(particle['pos'][0], particle['pos'][1]))
-                    self.particles_surface.blit(rotated_flesh, rect.topleft)
-                
-                # Draw glow effect
+        for particle in self.particles:
+            if particle["origin"][0] == -1:
+                # For flame particles (check if color is a list before modifying)   
+                # Draw the particle
                 pygame.draw.circle(
                     self.particles_surface, 
-                    color, 
+                    particle["color"], 
                     (int(particle['pos'][0]), int(particle['pos'][1])), 
-                    int(current_size/3)
+                    int(particle['size'])
                 )
+            else:
+                # For explosion particles
+                flesh = self.assets["flesh"][particle["type"]]
+                fade_ratio = particle['lifetime'] / particle['max_lifetime']
+                current_size = max(0, int(particle['size'] * fade_ratio))
+                
+                if fade_ratio > 0 and current_size > 0:
+                    # Draw particle
+                    r, g, b = particle['color']
+                    color = (r, g, b, int(255 * fade_ratio))
+                    
+                    if flesh and current_size > 2:
+                        dx = particle['origin'][0] - particle['pos'][0]
+                        dy = (particle['origin'][1] - particle['pos'][1]) * -1
+                        angle = math.degrees(math.atan2(dy, dx))
+                        
+                        # Scale and rotate flesh image
+                        scaled_flesh = pygame.transform.scale(flesh, (current_size, current_size))
+                        rotated_flesh = pygame.transform.rotate(scaled_flesh, angle - 45)
+                        rect = rotated_flesh.get_rect(center=(particle['pos'][0], particle['pos'][1]))
+                        self.particles_surface.blit(rotated_flesh, rect.topleft)
+                    
+                    # Circular infill
+                    pygame.draw.circle(
+                        self.particles_surface, 
+                        color, 
+                        (int(particle['pos'][0]), int(particle['pos'][1])), 
+                        int(current_size/3)
+                    )
         
-        # Blit particles surface to screen
+        # Blit particles surface to screen - this should be outside the loop!
         self.screen.blit(self.particles_surface, (0, 0))
