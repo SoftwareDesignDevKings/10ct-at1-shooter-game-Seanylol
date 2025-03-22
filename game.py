@@ -18,7 +18,6 @@ COLORS = [
     (255, 200, 100),  # Light orange
 ]
 
-
 class Game:
     def __init__(self):
         pygame.init()  # Initialize Pygame
@@ -47,17 +46,25 @@ class Game:
         self.reset_game()
         self.spike_cooldown = 10
         self.spike_timer = 0
+        self.enemy_speed=1
         #powerups
+
+        self.power_up_freq=0.5
+
         self.tp=0
         self.bm=0
         self.spreadshots=0
         self.tped=False
         self.beamed=False
 
-        #change bm to a numerical value indicating beam and teleport count
+        self.lv=1
+        self.levels = [[self.player.shoot_cooldown,5],[self.spike_cooldown,1.5],[self.enemy_spawn_interval,-10],[self.enemy_speed,2]],
 
+        #continuously apply 
         self.ba=False
         self.beamangle = 0
+
+
 
 
     def spawn_flame(self, pos, color,dir):
@@ -80,6 +87,31 @@ class Game:
         }
         )
 
+    def check_lvlup(self):
+        if self.player.xp > 3**self.lv:
+            self.lv += 1
+            self.level_up_text = {
+                'text': f"LEVEL {self.lv}",
+                'timer': 3.0,  
+                'start_time': pygame.time.get_ticks() / 1000.0,  
+                'alpha': 255
+            }
+            level_improvements = [5,-1.5,-10,3]
+            #continnuously apply level changes: this makes the game exponentially challenging
+            # a pointer may allow sparing if statements but im not yet familair with them so no
+            for i in range(len(level_improvements)):
+                c = level_improvements[i]
+                if i == 0:
+                    self.player.shoot_cooldown += c
+                elif i == 1:
+                    self.spike_cooldown += c
+                elif i == 2:
+                    self.enemy_spawn_interval += c
+                elif i == 3:
+                    self.enemy_speed += c
+            self.power_up_freq-=-0.1
+            self.player.speed-=1
+            
 
     def spawn_explosion(self, origin, size, color_index, vel, splitnum, pos,fleshtype):
         if size < 2:  # Base case - stop recursion when particles get too small
@@ -225,6 +257,7 @@ class Game:
                 
             self.handle_events()
             self.draw()
+            self.check_lvlup()
             
             if not self.game_over:
                 self.update()
@@ -321,6 +354,22 @@ class Game:
             
         self.spawn_enemies()
         
+    def draw_level_up_text(self):
+        if hasattr(self, 'level_up_text') and self.level_up_text['timer'] > 0:
+            current_time = pygame.time.get_ticks() / 1000.0
+            elapsed = current_time - self.level_up_text['start_time']
+            if elapsed < self.level_up_text['timer']:
+                alpha = int(255 * (1 - (elapsed / self.level_up_text['timer'])))
+                level_text = self.font_large.render(self.level_up_text['text'], True, (255, 255, 0))
+                text_surface = pygame.Surface(level_text.get_size(), pygame.SRCALPHA)
+                text_surface.fill((255, 255, 255, alpha))
+                level_text.blit(text_surface, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+                text_rect = level_text.get_rect(center=(app.WIDTH // 2, app.HEIGHT // 2))
+                self.screen.blit(level_text, text_rect)
+            else:
+                # Reset timer when done
+                self.level_up_text['timer'] = 0
+
     def draw(self):
         """Render all game elements to the screen."""
         # Draw background
@@ -359,10 +408,10 @@ class Game:
         ss_text_surf = self.font_small.render(f"Spreadshots: {self.spreadshots}", True, (255, 255, 255))
 
         self.screen.blit(xp_text_surf, (10, 70))
-        self.screen.blit(tp_text_surf, (10, 120))
-        self.screen.blit(bm_text_surf, (10, 170))
-        self.screen.blit(ss_text_surf, (10, 220))
-
+        self.screen.blit(tp_text_surf, (10, 100))
+        self.screen.blit(bm_text_surf, (10, 130))
+        self.screen.blit(ss_text_surf, (10, 160))
+        self.draw_level_up_text()
         # Update display
         pygame.display.flip()
 
@@ -423,8 +472,12 @@ class Game:
                                 0
                             )
                             # Add coin when enemy is killed by spike
-                            tpe = random.randint(0,3)-1
-                            new_coin = Coin(enemy.x, enemy.y,tpe)
+                            ptype=0
+                            if random.random()<self.power_up_freq:
+                                ptype=random.randint(0,2)
+                            else:
+                                ptype = -1
+                            new_coin = Coin(enemy.x, enemy.y,ptype)
                             self.coins.append(new_coin)
                             enemies_to_remove.append(enemy)
         
@@ -456,7 +509,12 @@ class Game:
             for enemy in self.enemies:
                 if bullet.rect.colliderect(enemy.rect) and bullet not in bullets_to_remove:
                     self.create_explosion((enemy.x, enemy.y), random.uniform(15, 25), random.randint(6, 12), 0)
-                    new_coin = Coin(enemy.x, enemy.y,random.randint(0,3)-1)
+                    ptype=0
+                    if random.random()<self.power_up_freq:
+                        ptype=random.randint(0,2)
+                    else:
+                        ptype = -1
+                    new_coin = Coin(enemy.x, enemy.y,ptype)
                     self.coins.append(new_coin)
                     bullets_to_remove.append(bullet)
                     enemies_to_remove.append(enemy)
@@ -487,7 +545,12 @@ class Game:
                 if perp_dist <= effective_width + enemy.rect.width / 2:
                     if enemy not in enemies_to_remove:
                         self.create_explosion((enemy.x, enemy.y), random.uniform(15, 25), random.randint(6, 12), 0)
-                        new_coin = Coin(enemy.x, enemy.y,random.randint(0,3)-1)
+                        ptype=0
+                        if random.random()<self.power_up_freq:
+                            ptype=random.randint(0,2)
+                        else:
+                            ptype = -1
+                        new_coin = Coin(enemy.x, enemy.y,ptype)
                         self.coins.append(new_coin)
                         enemies_to_remove.append(enemy)
         
@@ -498,36 +561,7 @@ class Game:
         for enemy in enemies_to_remove:
             if enemy in self.enemies:
                 self.enemies.remove(enemy)
-    '''
-    def check_bullet_enemy_collisions(self):
-        bullets_to_remove = []
-        enemies_to_remove = []
-        
-        for bullet in self.player.bullets:
-            self.spawn_flame([bullet.x,bullet.y],(240,220,15),[bullet.vx,bullet.vy])
-            for enemy in self.enemies:
-                angle = math.degrees(math.atan2(self.player.y - enemy.y, self.player.x - enemy.x))
-
-                if (bullet.rect.colliderect(enemy.rect) and bullet not in bullets_to_remove) or  (self.ba and angle>self.beamangle-5 and angle<self.beamangle+5):
-                    #somehow this part is not good. Take a break for now and add randomised powerups later on
-                    #last step is to add xp/level display with incrementations on enemy attributes.  Do it by tommorow.
-
-
-                    self.create_explosion((enemy.x, enemy.y), random.uniform(15, 25), random.randint(6, 12),0)
-                    new_coin = Coin(enemy.x, enemy.y)
-                    self.coins.append(new_coin)
-                    bullets_to_remove.append(bullet)
-                    enemies_to_remove.append(enemy)
-        
-        
-        for bullet in bullets_to_remove:
-            if bullet in self.player.bullets:
-                self.player.bullets.remove(bullet)
-                
-        for enemy in enemies_to_remove:
-            if enemy in self.enemies:
-                self.enemies.remove(enemy)
-    '''
+    
     def check_player_coin_collisions(self):
         coins_collected = []
         for coin in self.coins:
