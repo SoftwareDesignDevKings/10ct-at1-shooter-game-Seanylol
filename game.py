@@ -40,7 +40,6 @@ class Game:
         self.blocks = []
         self.spike_rows = []
         self.blockind = 0
-        self.xp = 0
         self.particles = []
         self.float_particles=[]
         self.particles_surface = pygame.Surface((app.WIDTH, app.HEIGHT), pygame.SRCALPHA)
@@ -48,9 +47,14 @@ class Game:
         self.reset_game()
         self.spike_cooldown = 10
         self.spike_timer = 0
-        self.tp=False
-        self.bm=False
-        #change bm to a numerical value indicating bm count
+        #powerups
+        self.tp=0
+        self.bm=0
+        self.spreadshots=0
+        self.tped=False
+        self.beamed=False
+
+        #change bm to a numerical value indicating beam and teleport count
 
         self.ba=False
         self.beamangle = 0
@@ -264,26 +268,28 @@ class Game:
                     nearest_enemy = self.find_nearest_enemy()
                     if nearest_enemy:
                         self.player.shoot_toward_enemy(nearest_enemy)
-                if event.key == pygame.K_t:
+                if event.key == pygame.K_t and self.tp>0:
                     print("Teleport mode activated")
-                    self.tp = True 
-                if event.key == pygame.K_b:
-                    self.bm = True
-                if event.key == pygame.K_c:
+                    self.tp -=1
+                    self.tped=True
+                if event.key == pygame.K_b and self.bm>0:
+                    self.bm -=1
+                    self.beamed=True
+                if event.key == pygame.K_c and self.spreadshots>0:
                     self.player.circleshot()
+                    self.spreadshots-=1
             elif event.type == pygame.KEYUP:
                 # Turn off teleport mode when T key is released
                 if event.key == pygame.K_t:
-                    self.tp = False
                     print("Teleport mode deactivated")
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mx, my = pygame.mouse.get_pos()
-                if self.tp:    
+                if self.tped:    
                     self.player.teleport(mx, my)
-                    self.tp = False
-                elif self.bm:
+                    self.tped=False
+                elif self.beamed:
                     self.player.shootbeam(mx, my)
-                    self.bm = False
+                    self.beamed=False
                     print("Beam fired")
                 elif event.button == 1:  
                     self.player.shoot_toward_mouse(event.pos)
@@ -347,7 +353,16 @@ class Game:
         hp = max(0, min(self.player.health, 5))
         health_img = self.assets["health"][hp]
         self.screen.blit(health_img, (10, 10))
-        
+        xp_text_surf = self.font_small.render(f"XP: {self.player.xp}", True, (255, 255, 255))
+        tp_text_surf = self.font_small.render(f"Teleports: {self.tp}", True, (255, 255, 255))
+        bm_text_surf = self.font_small.render(f"Beams: {self.bm}", True, (255, 255, 255))
+        ss_text_surf = self.font_small.render(f"Spreadshots: {self.spreadshots}", True, (255, 255, 255))
+
+        self.screen.blit(xp_text_surf, (10, 70))
+        self.screen.blit(tp_text_surf, (10, 120))
+        self.screen.blit(bm_text_surf, (10, 170))
+        self.screen.blit(ss_text_surf, (10, 220))
+
         # Update display
         pygame.display.flip()
 
@@ -408,7 +423,8 @@ class Game:
                                 0
                             )
                             # Add coin when enemy is killed by spike
-                            new_coin = Coin(enemy.x, enemy.y)
+                            tpe = random.randint(0,3)-1
+                            new_coin = Coin(enemy.x, enemy.y,tpe)
                             self.coins.append(new_coin)
                             enemies_to_remove.append(enemy)
         
@@ -440,7 +456,7 @@ class Game:
             for enemy in self.enemies:
                 if bullet.rect.colliderect(enemy.rect) and bullet not in bullets_to_remove:
                     self.create_explosion((enemy.x, enemy.y), random.uniform(15, 25), random.randint(6, 12), 0)
-                    new_coin = Coin(enemy.x, enemy.y)
+                    new_coin = Coin(enemy.x, enemy.y,random.randint(0,3)-1)
                     self.coins.append(new_coin)
                     bullets_to_remove.append(bullet)
                     enemies_to_remove.append(enemy)
@@ -451,40 +467,30 @@ class Game:
             beam_dir_x = math.cos(beam_angle_rad)
             beam_dir_y = math.sin(beam_angle_rad)
             beam_width = 25  # Match the width from Player.shootbeam
-            beam_length = 900  # Match the length from draw_particles
             for enemy in self.enemies:
-                # Vector from player to enemy
+                # Vector from player to enemy, expressed purely based on distance
                 to_enemy_x = enemy.x - self.player.x
-                to_enemy_y = enemy.y - self.player.y
-                
-                # Distance from player to enemy
-                dist_to_enemy = math.sqrt(to_enemy_x**2 + to_enemy_y**2)
-                    
+                to_enemy_y = enemy.y - self.player.y                
                 dot_product = to_enemy_x * beam_dir_x + to_enemy_y * beam_dir_y
                 
                 # Skip if enemy is behind the beam (negative projection)
                 if dot_product < 0:
                     continue
-                    
-                # Calculate closest point on beam line to enemy
+                
+                # Calculate closest point on beam line to enemy(perpendicular distance: Dont know exactly how this works)
                 closest_x = self.player.x + beam_dir_x * dot_product
                 closest_y = self.player.y + beam_dir_y * dot_product
-                
-                # Distance from closest point to enemy (perpendicular distance)
                 perp_dist = math.sqrt((closest_x - enemy.x)**2 + (closest_y - enemy.y)**2)
                 
-                # Adjust beam width based on distance (optional, for perspective effect)
+                # TWeak effective beam width and check enemy overlap
                 effective_width = beam_width / 2
-                
-                # Check if enemy is within the beam width
                 if perp_dist <= effective_width + enemy.rect.width / 2:
                     if enemy not in enemies_to_remove:
                         self.create_explosion((enemy.x, enemy.y), random.uniform(15, 25), random.randint(6, 12), 0)
-                        new_coin = Coin(enemy.x, enemy.y)
+                        new_coin = Coin(enemy.x, enemy.y,random.randint(0,3)-1)
                         self.coins.append(new_coin)
                         enemies_to_remove.append(enemy)
         
-        # Remove bullets and enemies that have been marked
         for bullet in bullets_to_remove:
             if bullet in self.player.bullets:
                 self.player.bullets.remove(bullet)
@@ -527,7 +533,15 @@ class Game:
         for coin in self.coins:
             if coin.rect.colliderect(self.player.rect):
                 coins_collected.append(coin)
-                self.player.add_xp(1)
+                if coin.tpe==-1:
+                    self.player.add_xp(1)
+                if coin.tpe==0:
+                    self.tp+=1
+                if coin.tpe==1:
+                    self.bm+=1
+                if coin.tpe==2:
+                    self.spreadshots+=1
+
 
         for c in coins_collected:
             if c in self.coins:
