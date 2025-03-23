@@ -329,6 +329,7 @@ class Game:
 
 
 
+
     def update(self):
         current_time = pygame.time.get_ticks()
         dt = (current_time - self.last_update_time) / 1000.0

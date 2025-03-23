@@ -51,13 +51,13 @@ class Player:
         keys = pygame.key.get_pressed()
         vel_x, vel_y = 0, 0
         # TODO: 2. Adjust player position with keys pressed, updating the player position to vel_x and vel_y
-        if keys[pygame.K_LEFT]:
+        if keys[pygame.K_a]:
             vel_x-=self.speed
-        if keys[pygame.K_RIGHT]:
+        if keys[pygame.K_d]:
             vel_x+=self.speed
-        if keys[pygame.K_DOWN]:
+        if keys[pygame.K_s]:
             vel_y+=self.speed
-        if keys[pygame.K_UP]:
+        if keys[pygame.K_w]:
             vel_y-=self.speed
         # TODO: 3. Clamp player position to screen bounds
 
