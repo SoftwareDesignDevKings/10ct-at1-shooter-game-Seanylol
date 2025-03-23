@@ -34,9 +34,7 @@ class Enemy:
             self.move_toward_player(player)
         self.animate()
         # TODO: Check if knockback is active and call apply_knockback()
-
         # TODO: If no knockback, move toward the player
-
         # TODO: Call animate() to update enemy sprite animation
 
         pass
@@ -58,25 +56,24 @@ class Enemy:
         pass
 
     def apply_knockback(self):
+        # TODO: Apply knockback effect to enemy position based on knockback speed increments dx and dy 
+        # TODO: Update facing direction based on knockback direction
         step = min(app.ENEMY_KNOCKBACK_SPEED, self.knockback_dist_remaining)
         self.knockback_dist_remaining -= step
         self.x += self.knockback_dx * step
         self.y += self.knockback_dy * step
-        if self.knockback_dx < 0:
-            self.facing_left = True
+        if self.knockback_dx <0:
+            self.facing_left = True 
         else:
             self.facing_left = False
         self.rect.center = (self.x, self.y)
-        # TODO: Apply knockback effect to enemy position 
-        # Hint: apply the dx, dy attributes
-        
-        # TODO: Update facing direction based on knockback direction
         pass
 
     def animate(self):
         self.animation_timer += 1
         if self.animation_timer >= self.animation_speed:
             self.animation_timer = 0
+            #animates based on modulus of frame index after incrementation
             self.frame_index = (self.frame_index + 1) % len(self.frames)
             center = self.rect.center
             self.image = self.frames[self.frame_index]
@@ -85,7 +82,7 @@ class Enemy:
         pass
 
     def draw(self, surface):
-
+        #draws enemy orientation based on left or right 
         if self.facing_left:
             flipped_image = pygame.transform.flip(self.image, True, False)
             surface.blit(flipped_image, self.rect)
@@ -93,6 +90,7 @@ class Enemy:
             surface.blit(self.image, self.rect)
 
     def set_knockback(self, px, py, dist):
+        #sets their position back from the player with px and py 
         dx = self.x - px
         dy = self.y - py
         length = math.sqrt(dx*dx + dy*dy)

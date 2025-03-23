@@ -20,10 +20,12 @@ class Player:
         self.beam = assets["beam"][0]
         self.beam_display = [0,0,0,0,False]
 
+
+        #tracks the movement state correlating to frame index
         self.state = "idle"
         self.frame_index = 0
         self.animation_timer = 0
-        self.animation_speed = 8
+        self.animation_speed = 8#iteration rate through the fram index in assets
         self.xp=0
 
         # TODO: 3. Create a collision rectangle (self.rect) 
@@ -119,7 +121,7 @@ class Player:
     def shoot_toward_position(self, tx, ty):
         if self.shoot_timer >= self.shoot_cooldown:
             return
-
+        #calculates target angle on distance differences
         dx = tx - self.x
         dy = ty - self.y
         dist = math.sqrt(dx**2 + dy**2)
@@ -137,7 +139,7 @@ class Player:
             offset = i - mid
             spread_radians = math.radians(angle_spread * offset)
             angle = base_angle + spread_radians
-
+            #creates velocity vectors on the cos and sin components of angle for bullet propagation
             final_vx = math.cos(angle) * self.bullet_speed
             final_vy = math.sin(angle) * self.bullet_speed
             bullet = Bullet(self.x, self.y, final_vx, final_vy, self.bullet_size)
@@ -145,6 +147,7 @@ class Player:
         self.shoot_timer = 0
 
     def circleshot(self):
+        #spreads 15 bullets evenly around the player and propgate outwards
         num=15
         deg = math.radians(360/num)
         for x in range(0,num):
@@ -170,11 +173,11 @@ class Player:
         initial_beam_width = 25  # Starting width of the beam
         beam_start_x = self.x + (math.cos(angle_rad) * 470)
         beam_start_y = self.y + (math.sin(angle_rad) * 470)
-        # Store beam information
+        # Store beam information structure: 
         self.beam_display = [
-            angle_deg,           
-            beam_start_x,        
-            beam_start_y,       
-            30,                  
-            True,                
+            angle_deg,           #degrees
+            beam_start_x,        #x center
+            beam_start_y,        #y center
+            30,                  #width
+            True,                #active by default
         ]
