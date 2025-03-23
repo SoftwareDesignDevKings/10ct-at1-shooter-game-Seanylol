@@ -1,0 +1,184 @@
+CLASS Player
+    FUNCTION Initialize(x, y, assets)
+        SET x = x
+        SET y = y
+        SET vx = 0
+        SET vy = 0
+        SET speed = PLAYER_SPEED from app
+        SET animations = assets["player"]
+        SET beam = assets["beam"][0]
+        SET beam_display = [0, 0, 0, 0, FALSE]
+        SET state = "idle"
+        SET frame_index = 0
+        SET animation_timer = 0
+        SET animation_speed = 8
+        SET xp = 0
+        SET image = animations[state][frame_index]
+        SET rect = create rectangle from image centered at (x, y)
+        SET facing_left = FALSE
+        SET health = 5
+        SET bullet_speed = 10
+        SET bullet_size = 10
+        SET bullet_count = 1
+        SET shoot_cooldown = 20
+        SET shoot_timer = 0
+        SET bullets = empty list
+    END FUNCTION
+    
+    FUNCTION add_xp(amount)
+        INCREMENT xp by amount
+    END FUNCTION
+    
+    FUNCTION handle_input()
+        GET pressed keys
+        SET vel_x = 0, vel_y = 0
+        
+        IF 'a' key is pressed THEN
+            DECREMENT vel_x by speed
+        END IF
+        
+        IF 'd' key is pressed THEN
+            INCREMENT vel_x by speed
+        END IF
+        IF 's' key is pressed THEN
+            INCREMENT vel_y by speed
+        END IF
+        
+        IF 'w' key is pressed THEN
+            DECREMENT vel_y by speed
+        END IF
+        INCREMENT x by vel_x
+        INCREMENT y by vel_y
+        
+        SET x = maximum of (0, minimum of (x, WIDTH))
+        SET y = maximum of (0, minimum of (y, HEIGHT))
+        
+        SET rect.center = (x, y)
+        
+        IF vel_x is not 0 OR vel_y is not 0 THEN
+            SET state = "run"
+        ELSE
+            SET state = "idle"
+        END IF
+        
+        IF vel_x < 0 THEN
+            SET facing_left = TRUE
+        ELSE IF vel_x > 0 THEN
+            SET facing_left = FALSE
+        END IF
+    END FUNCTION
+    
+    FUNCTION update()
+        FOR EACH bullet IN bullets
+            CALL bullet.update()
+            IF bullet.y < 0 OR bullet.y > HEIGHT OR bullet.x < 0 OR bullet.x > WIDTH THEN
+                REMOVE bullet from bullets
+            END IF
+        END FOR
+        
+        INCREMENT animation_timer by 1
+        
+        IF animation_timer >= animation_speed THEN
+            SET animation_timer = 0
+            SET frames = animations[state]
+            SET frame_index = (frame_index + 1) modulo length of frames
+            SET image = frames[frame_index]
+            SET center = rect.center
+            SET rect = create rectangle from image
+            SET rect.center = center
+        END IF
+    END FUNCTION
+    
+    FUNCTION draw(surface)
+        IF facing_left THEN
+            SET flipped = flip image horizontally
+            DRAW flipped onto surface at rect position
+        ELSE
+            DRAW image onto surface at rect position
+        END IF
+        
+        FOR EACH bullet IN bullets
+            CALL bullet.draw(surface)
+        END FOR
+    END FUNCTION
+    
+    FUNCTION take_damage(amount)
+        SET health = maximum of (0, health - amount)
+    END FUNCTION
+    
+    FUNCTION shoot_toward_position(tx, ty)   #target x and target y positions
+        IF shoot_timer >= shoot_cooldown THEN
+            RETURN
+        END IF
+        
+        SET dx = tx - x
+        SET dy = ty - y
+        SET dist = square root of (dx² + dy²) #distance 
+        
+        IF dist equals 0 THEN
+            RETURN
+        END IF
+        
+        SET vx = (dx / dist) × bullet_speed 
+        SET vy = (dy / dist) × bullet_speed
+        
+        SET angle_spread = 10
+        SET base_angle = arctangent of (vy, vx)
+        SET mid = (bullet_count - 1) / 2
+        
+        FOR i = 0 TO bullet_count - 1
+            SET offset = i - mid
+            SET spread_radians = angle_spread × offset in radians
+            SET angle = base_angle + spread_radians
+            SET final_vx = cosine of angle × bullet_speed
+            SET final_vy = sine of angle × bullet_speed
+            CREATE new Bullet at (x, y) with velocity (final_vx, final_vy) and size bullet_size
+            ADD bullet to bullets list
+        END FOR
+        
+        SET shoot_timer = 0
+    END FUNCTION
+    
+    FUNCTION circleshot()
+        SET num = 15
+        SET deg = 360/num in radians
+        
+        FOR x = 0 TO num - 1
+            CREATE new Bullet at (x, y) with velocity (
+                cosine of (x × deg) × bullet_speed × 0.5,
+                sine of (x × deg) × bullet_speed × 0.5
+            ) and size bullet_size
+            ADD bullet to bullets list
+        END FOR
+    END FUNCTION
+    
+    FUNCTION shoot_toward_mouse(pos)
+        SET mx, my = pos
+        CALL shoot_toward_position(mx, my)
+    END FUNCTION
+    
+    FUNCTION shoot_toward_enemy(enemy)
+        CALL shoot_toward_position(enemy.x, enemy.y)
+    END FUNCTION
+    
+    FUNCTION teleport(posx, posy)
+        SET x = posx
+        SET y = posy
+    END FUNCTION
+    
+    FUNCTION shootbeam(posx, posy)
+        SET angle_rad = arctangent of (posy - y, posx - x)
+        SET angle_deg = angle_rad in degrees
+        SET initial_beam_width = 25
+        SET beam_start_x = x + (cosine of angle_rad × 470)
+        SET beam_start_y = y + (sine of angle_rad × 470)
+        
+        SET beam_display = [
+            angle_deg,
+            beam_start_x, #x center for alignment
+            beam_start_y, #y center for alignment  
+            30,    #width 
+            TRUE   #active
+        ]
+    END FUNCTION
+END CLASS
