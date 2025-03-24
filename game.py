@@ -49,7 +49,7 @@ class Game:
         self.enemy_speed=1
         #powerups
 
-        self.power_up_freq=0.5
+        self.power_up_freq=0.3
 
         self.tp=0
         self.bm=0
@@ -94,6 +94,7 @@ class Game:
     def check_lvlup(self):
         if self.player.xp > 3**self.lv:
             self.lv += 1
+            self.player.health=5
             #formatting for level up text with time, transparency, and content
             self.level_up_text = {
                 'text': f"LEVEL {self.lv}",
