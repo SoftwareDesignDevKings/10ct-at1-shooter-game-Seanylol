@@ -6,6 +6,7 @@ from player import Player
 from enemy import Enemy
 from coin import Coin
 from particles import Particle
+from spike import Spike
 #feature changes: physics simulation for player, obstacles/level difficulty increase, wave attacks, bombing
 #i.e explosions/blood splatter, projectile trail
 #The surface can also be changed, i.e ice spreading/slow barrier
@@ -81,19 +82,6 @@ class Game:
         #however I could save a few lines by defining a particle class without any inbuilt methods for the sake of attribute access
         nw = Particle(pos,[vel_x,vel_y],size,(r,g,b),random.uniform(30.0,40.2),random.uniform(30.0,40.2),[-1,-1],-1)
         self.particles.append(nw)
-        '''
-        self.particles.append({
-                'pos': pos,
-                'vel': [vel_x,vel_y], #velocity values just like player and enemy classes
-                'size': size, 
-                'color':(red, g, b),  
-                'lifetime': random.uniform(30.0,40.2), #lifetime to track removal and decay
-                'max_lifetime': random.uniform(30.0,40.2),
-                'origin': [-1,-1],#this means that it does not have an origin which would only apply to explosion instances
-                'type': 0
-        }
-        )
-        '''
 
     def check_lvlup(self):
         if self.player.xp > 3**self.lv:
@@ -153,18 +141,6 @@ class Game:
             #append particles in the same attribute structure  
             nw = Particle(center,velocity,size,COLORS[color_index % len(COLORS)],lifetime,lifetime,origin,0)
             self.particles.append(nw)
-            '''
-            self.particles.append({
-                'pos': center,
-                'vel': velocity,
-                'size': size,
-                'color': COLORS[color_index % len(COLORS)], #this works by extracting colors from a defined spectrum of yellow, orange and red to create layering effect
-                'lifetime': lifetime,
-                'max_lifetime': lifetime,
-                'origin': origin,
-                'type': fleshtype
-            })
-            '''
             
             if random.random() < 0.3:
                 #spawn children based on probability, increments index on the color spectrum to visualise the next generation level
@@ -226,17 +202,13 @@ class Game:
                 # Create a proper spike object with a rect for collision detection
                 #attribute structure can be found again
                 spike_rect = pygame.Rect(pos_x, pos_y, tile_size, tile_size)
-                row_spikes.append({
-                    'position': [pos_x, pos_y],
-                    'timer': current_timer,
-                    'rect': spike_rect,
-                    'active': False
-                })
+                row_spikes.append(Spike([pos_x,pos_y],current_timer,spike_rect,False))
+                print("counted")
             
             if can_place and row_spikes:
                 for spike in row_spikes:
                     #marking
-                    occupied_positions.add((spike['position'][0], spike['position'][1]))
+                    occupied_positions.add((spike.pos[0], spike.pos[1]))
                 self.spike_rows.append(row_spikes)
                 timer_start += 0.2
 
@@ -290,6 +262,7 @@ class Game:
                 self.spike_timer = 0
                 x = random.randint(0, app.WIDTH)
                 y = random.randint(0, app.HEIGHT)
+                print("yes")
                 self.generate_random_wall_region([x, y], 15, radius=40)
                 
             self.handle_events()
@@ -645,46 +618,21 @@ class Game:
         particles_to_remove = []
         for particle in self.particles:
             particle.update(dt)
-            '''
-            #updating particle position assuming velocity is constant, encapsulated within the particle custom structure: see 
-            particle['pos'][0] += particle['vel'][0]
-            particle['pos'][1] += particle['vel'][1]
-
-            particle['vel'][0] *= 0.98
-            particle['vel'][1] *= 0.98
-            
-            if particle['origin'][0]!=-1:
-                #if type is explosive: add a little bit of gravity to velocity y(for fun :))
-                particle['vel'][1] += 0.2
-
-                
-            particle['lifetime'] -= dt * 30
-            '''
-
-            # Mark for removal if lifetime is up
             if particle.lifetime <= 0:
                 particles_to_remove.append(particle)
-        
         for particle in particles_to_remove:
             if particle in self.particles:
                 self.particles.remove(particle)
     
     def update_spikes(self, dt):
         rows_to_remove = []
-        
         for row_index, row in enumerate(self.spike_rows):
             spikes_to_remove = []
-            
             for spike_index, spike in enumerate(row):
                 # Update timer
-                spike['timer'] -= dt
-                
-                # Check if spike has become active
-                if spike['timer'] <= 0 and spike['timer'] > -2:
-                    spike['active'] = True
-                
-                # Mark for removal if lifetime is up
-                if spike['timer'] <= -2:
+                spike.update(dt)
+                #check alive or dead
+                if not spike.active:
                     spikes_to_remove.append(spike_index)
             
             # Remove dead spikes
@@ -699,29 +647,11 @@ class Game:
         for index in sorted(rows_to_remove, reverse=True):
             self.spike_rows.pop(index)
 
+
     def draw_spikes(self):
-        #obtains the spike image from assets and resizes to tile dimensions
-        spike_img = self.assets["spike"][0]
-        spike_img = pygame.transform.scale(spike_img,(app.TW,app.TW))
-        
         for row in self.spike_rows:
             for spike in row:
-                position = spike['position']
-                
-                if spike['timer'] > 0:
-                    # Draw warning indicator to provide reaction time
-                    warning_rect = pygame.Rect(position[0], position[1], app.TW, app.TW)
-                    alpha = int(255 * (1 - spike['timer']))  # Fade in effect
-                    warning_color = (255, 0, 0, min(255, max(0, alpha)))
-                    
-                    # Create a surface for the warning rectangle
-                    warning_surface = pygame.Surface((app.TW, app.TW), pygame.SRCALPHA)
-                    pygame.draw.rect(warning_surface, warning_color, warning_surface.get_rect(), 2)
-                    self.screen.blit(warning_surface, position)
-                    
-                elif spike['active']:
-                    # Draw active spike
-                    self.screen.blit(spike_img, position)
+                spike.draw(self.screen)
     
     def draw_particles(self):
         # Clear particles surface
@@ -747,7 +677,6 @@ class Game:
             
         for particle in self.particles:
             if particle.tpe == -1:
-                print("bypa")
                 # For flame particles (check if color is a list before modifying)   
                 # Draw the particle
                 #basically ust  draws bubbles of the specified color at the specified position
