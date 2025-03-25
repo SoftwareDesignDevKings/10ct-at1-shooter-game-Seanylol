@@ -46,7 +46,7 @@ class Game:
         self.particles_surface = pygame.Surface((app.WIDTH, app.HEIGHT), pygame.SRCALPHA)
         self.last_update_time = pygame.time.get_ticks()
         self.reset_game()
-        self.spike_cooldown = 10
+        self.spike_cooldown = 4
         self.spike_timer = 0
         self.enemy_speed=1
         #powerups
@@ -153,7 +153,7 @@ class Game:
 
     def generate_random_wall_region(self, center_point, max_rows, radius):
         #timer to keep track of when a spike is created and removed
-        timer_start = 1.0  
+        timer_start = 1.0
         tile_size = app.TW  
         #clamping x and y to a tilesquare by wholenumber dividing tilesize
         center_grid_x = (center_point[0] // tile_size) * tile_size
@@ -202,15 +202,14 @@ class Game:
                 # Create a proper spike object with a rect for collision detection
                 #attribute structure can be found again
                 spike_rect = pygame.Rect(pos_x, pos_y, tile_size, tile_size)
-                row_spikes.append(Spike([pos_x,pos_y],current_timer,spike_rect,False))
-                print("counted")
+                row_spikes.append(Spike([pos_x,pos_y],current_timer,spike_rect,True))
             
             if can_place and row_spikes:
                 for spike in row_spikes:
                     #marking
                     occupied_positions.add((spike.pos[0], spike.pos[1]))
                 self.spike_rows.append(row_spikes)
-                timer_start += 0.2
+                timer_start += 0.1
 
 
     def reset_game(self):
@@ -469,7 +468,7 @@ class Game:
     def check_player_spike_collisions(self):
         for row in self.spike_rows:
             for spike in row:
-                if spike['active'] and spike['rect'].colliderect(self.player.rect):
+                if spike.active and spike.rect.colliderect(self.player.rect):
                         #player will die automatically if tangent to an active spike
                         self.player.take_damage(5)
     
@@ -480,9 +479,9 @@ class Game:
         
         for row in self.spike_rows:
             for spike in row:
-                if spike['active']:
+                if spike.active:
                     for enemy in self.enemies:
-                        if spike['rect'].colliderect(enemy.rect):
+                        if spike.rect.colliderect(enemy.rect):
                             #explosion of enemy on contact with spike
                             self.create_explosion(
                                 (enemy.x, enemy.y),
@@ -631,7 +630,7 @@ class Game:
             for spike_index, spike in enumerate(row):
                 # Update timer
                 spike.update(dt)
-                #check alive or dead
+                #check alive or dead this part is wrong 
                 if not spike.active:
                     spikes_to_remove.append(spike_index)
             
@@ -649,9 +648,11 @@ class Game:
 
 
     def draw_spikes(self):
+        #obtains the spike image from assets and resizes to tile dimensions
         for row in self.spike_rows:
             for spike in row:
-                spike.draw(self.screen)
+                position = spike.pos
+                spike.drw(self.screen)
     
     def draw_particles(self):
         # Clear particles surface

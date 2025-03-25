@@ -18,18 +18,18 @@ class Spike:
         if self.timer <= -2:
             self.active=False
 
-    def draw(self,surface):
+    def drw(self,surface):
+        print(self.active)
         if self.timer> 0:
             # 1.Draw warning indicator to provide reaction time
             # 2.Create a surface for the warning rectangle
+            warning_rect = pygame.Rect(self.pos[0], self.pos[1], app.TW, app.TW)
             alpha = int(255 * (1 - self.timer))  # Fade in effect
             warning_color = (255, 0, 0, min(255, max(0, alpha)))
             warning_surface = pygame.Surface((app.TW, app.TW), pygame.SRCALPHA)
             pygame.draw.rect(warning_surface, warning_color, warning_surface.get_rect(), 2)
-            surface.blit(warning_surface, self.pos)
-            
+            surface.blit(warning_surface, (self.pos[0], self.pos[1]))
         elif self.active:
-            print("blitting")
             surface.blit(self.img, self.pos)
 
 '''
