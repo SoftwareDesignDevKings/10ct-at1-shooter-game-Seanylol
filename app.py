@@ -27,6 +27,13 @@ TW=32
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
 
+COLORS = [
+    (255, 0, 0),      # Red
+    (255, 127, 0),    # Orange
+    (255, 255, 0),    # Yellow
+    (255, 200, 100),  # Light orange
+]
+
 
 # --------------------------------------------------------------------------
 #                       ASSET LOADING FUNCTIONS

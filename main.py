@@ -1,5 +1,5 @@
 # main.py
-from game import Game
+from cleanedgame import Game
 def main():
     game = Game()
     game.run()
