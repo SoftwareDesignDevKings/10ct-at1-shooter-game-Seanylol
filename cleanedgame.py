@@ -651,7 +651,7 @@ class Game:
         #obtains the spike image from assets and resizes to tile dimensions
         for row in self.spike_rows:
             for spike in row:
-                position = spike.pos
+                #uses the inbuilt draw method to conserve space in main code
                 spike.drw(self.screen)
     
     def draw_particles(self):

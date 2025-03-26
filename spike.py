@@ -2,6 +2,7 @@ import pygame,math,app,random,time
 
 class Spike:
     def __init__(self, position,timer,rect,active):
+        #most important attribute is the timer which will determine the order of spike apperanace
         self.assets = app.load_assets()
         self.pos = position
         self.timer = timer
@@ -31,12 +32,3 @@ class Spike:
             surface.blit(warning_surface, (self.pos[0], self.pos[1]))
         elif self.active:
             surface.blit(self.img, self.pos)
-
-'''
-                row_spikes.append({
-                    'position': [pos_x, pos_y],
-                    'timer': current_timer,
-                    'rect': spike_rect,
-                    'active': False
-                })
-                '''
