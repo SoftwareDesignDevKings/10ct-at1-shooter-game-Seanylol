@@ -1,0 +1,21 @@
+Github repo link: https://github.com/SoftwareDesignDevKings/10ct-at1-shooter-game-Seanylol
+Note: cleanedgamel.py is the final version of the game class incorporating spikes and particles as proper objects.
+
+Gameplay controls:
+Press B to shoot
+Press T and the mouse click at desired location to teleport
+Press C for spread shot
+Note that the power ups will run out so you should pay attention to the counter
+WASD for movement(changed from arrow keys)
+Powerup icons:
+The white circle is for spread shot
+The blue T is for teleport
+The white B is for beam(did not size properly)
+
+
+
+Bugs:
+-In the lower levels player speed is 6 times faster than the enemy, so any direct collision will result in continuous damage taken due to insufficient knockback.
+This problem doesn't exist anymore when levels progress and player speed reduces.
+I will try to implement relevant changes before final submission.
+
